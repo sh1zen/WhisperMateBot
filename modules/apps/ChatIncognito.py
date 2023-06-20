@@ -36,12 +36,10 @@ class ChatIncognito(ModuleBase):
             ],
             states={
                 self.CHAT_MODE: [
-                    MessageHandler(filters.Regex(r'^/reset$'), self.handler),
                     CommandHandler('report', self.report),
                     MessageHandler(filters.ALL, self.chat)
                 ],
                 self.CHAT_IDLE: [
-                    MessageHandler(filters.Regex(r'^/reset$'), self.handler),
                     StateHandler(self.app, self.hook, self.stateHandler),
                     CommandHandler('report', self.report),
                     MessageHandler(filters.TEXT, self.commands_handler),
@@ -86,6 +84,24 @@ class ChatIncognito(ModuleBase):
                 __('<b>Set your partners options here:</b>', user_id),
                 reply_markup=self.keyboards(self.KeyboardType.SETTINGS, user_id)
             )
+        elif self.checkCallback(query_data, 'reopen', True):
+
+            mate_id = query_data.split(".")[-1]
+
+            if mate_id and bool(DBChat.get_value(mate_id, 'reopen', False)):
+                await query.edit_message_text(
+                    __(
+                        "<b>Reopen request sent.</b>\n\n" +
+                        "<i>Wait for the user to accept your request or press cancel</i>",
+                        user_id
+                    ),
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(__('Cancel', user_id), callback_data=f"{self.hook}.cancel_reopen")],
+                    ])
+                )
+
+                # todo
+
         else:
 
             settings = {
@@ -257,9 +273,22 @@ class ChatIncognito(ModuleBase):
 
         return self.CHAT_IDLE
 
-    async def report(self):
-        # todo implement
-        pass
+    async def report(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+        user_id = update.effective_user.id
+
+        await update.message.reply_text(
+            __(
+                "<b>⬆️CHAT OVER⬆️</b>\n\n" +
+                "<i>The user is gonna be reported.</i>",
+                user_id,
+            ),
+            reply_markup=self.keyboards(self.KeyboardType.HOME, user_id)
+        )
+
+        self.handle_chat_left(update, report=True)
+
+        return self.CHAT_IDLE
 
     @send_typing_action
     async def chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -392,7 +421,7 @@ class ChatIncognito(ModuleBase):
             max_distance = int(chat_preferences['distance'] or 0)
             loc_data = maybe_unserialize(user['location'])
 
-            if max_distance > 0 and bool(loc_data):
+            if max_distance and bool(loc_data):
                 from haversine import haversine, Unit
 
                 loc_user_tuple = (loc_data['lat'], loc_data['long'])
@@ -431,8 +460,8 @@ class ChatIncognito(ModuleBase):
                 await context.bot.send_message(
                     chat_id=chatting_with_id,
                     text=__(
-                        "<b>Found a match</b>\n\n" +
-                        f"{gender[user['gender']] or '👤'} <b>{user_age}</b>" +
+                        "<b>Found a match!</b>\n\n" +
+                        f"{gender[user['gender']] or '👤'} <b>{user_age}</b>\n" +
                         f"<i>{user['bio']}</i>",
                         chatting_with_id
                     ),
@@ -465,7 +494,7 @@ class ChatIncognito(ModuleBase):
                     reply_markup=self.keyboards(self.KeyboardType.STOP_SEARCHING, user_id)
                 )
 
-    def handle_chat_left(self, update: Update, waiting=False):
+    def handle_chat_left(self, update: Update, waiting=False, report=False):
 
         user_id = update.effective_user.id
 
@@ -488,18 +517,25 @@ class ChatIncognito(ModuleBase):
                 reply_markup=self.keyboards(self.KeyboardType.HOME, chatting_with_id)
             )
 
-            # save the user we are chatting with, prev_mates
-            DBMeta.set_meta(
-                user_id,
-                'prev_mates',
-                limited_list(DBMeta.get_meta(user_id, 'prev_mates'), chatting_with_id, 5)
-            )
-            # save us to the user we are chatting with, prev_mates
-            DBMeta.set_meta(
-                chatting_with_id,
-                'prev_mates',
-                limited_list(DBMeta.get_meta(chatting_with_id, 'prev_mates'), user_id, 5)
-            )
+            if report:
+                DBUsers.update_value(
+                    chatting_with_id,
+                    'reported',
+                    int(DBUsers.get_value(chatting_with_id, 'reported', 0)) + 1
+                )
+            else:
+                # save the user we are chatting with, prev_mates
+                DBMeta.set_meta(
+                    user_id,
+                    'prev_mates',
+                    limited_list(DBMeta.get_meta(user_id, 'prev_mates'), chatting_with_id, 5)
+                )
+                # save us to the user we are chatting with, prev_mates
+                DBMeta.set_meta(
+                    chatting_with_id,
+                    'prev_mates',
+                    limited_list(DBMeta.get_meta(chatting_with_id, 'prev_mates'), user_id, 5)
+                )
 
     @send_typing_action
     async def handle_chat(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

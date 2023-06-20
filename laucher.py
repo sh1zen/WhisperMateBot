@@ -49,7 +49,7 @@ def load_modules(app, cdir='./modules/'):
 
 @send_typing_action
 async def handle_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Laucher: Sorry but your request is not supported.")
+    await update.message.reply_text("<i>Sorry but your request was not understood.</i>")
     print(update)
 
 

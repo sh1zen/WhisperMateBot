@@ -165,7 +165,7 @@ class Database:
     @classmethod
     def select(cls, raw_query) -> None | Cursor:
         sql_query, values = cls.compile(raw_query)
-        print(sql_query.replace("?", "'{}'").format(*values))
+        # print(sql_query.replace("?", "'{}'").format(*values))
         return Database.cursor.execute(sql_query, values)
 
     @classmethod

@@ -12,7 +12,7 @@ from workers.locale_handler import __
 class KeyboardType(Enum):
     HOME, ACTIONS, APPS, CANCEL, SHARE_LOCATION = range(5)
     SETTINGS_INLINE, ABOUT_INLINE, HELP_INLINE, LANGUAGES_INLINE, \
-        GENDER_INLINE, CANCEL_ACCEPT_INLINE, BACK_INLINE, YES_NO_INLINE = range(10, 18)
+        GENDER_INLINE, CANCEL_ACCEPT_INLINE, CANCEL_INLINE, BACK_INLINE, YES_NO_INLINE = range(10, 19)
 
 
 def getKeyboard(kType, user_id, prefix='', value=None, context=''):
@@ -92,6 +92,13 @@ def getKeyboard(kType, user_id, prefix='', value=None, context=''):
     if kType == KeyboardType.CANCEL_ACCEPT_INLINE:
         keyboard = [
             [InlineKeyboardButton(__('Accept', user_id), callback_data=f"{prefix}.accept")],
+            [InlineKeyboardButton(__('Cancel', user_id), callback_data=f"{prefix}.cancel")],
+        ]
+
+        return InlineKeyboardMarkup(keyboard)
+
+    if kType == KeyboardType.CANCEL_INLINE:
+        keyboard = [
             [InlineKeyboardButton(__('Cancel', user_id), callback_data=f"{prefix}.cancel")],
         ]
 

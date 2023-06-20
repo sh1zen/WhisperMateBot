@@ -167,7 +167,6 @@ def build_command_list(private: bool = False, group_name: str = None, admins: bo
 
 async def post_shutdown(app: Application) -> None:
     Database.close()
-
     print("shutting down...")
     await app.shutdown()
 
